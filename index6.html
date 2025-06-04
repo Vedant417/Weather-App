@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Weather App</title>
+        <link rel="stylesheet" href="weather.css">
+    </head>
+    <body>
+        <div class="card">
+            <div class="search">
+                <input type="text" placeholder="Enter City Name" spellcheck="false">
+                <button><img src="Images/search.png" alt="Search"></button>
+            </div>
+
+            <div class="loading">
+                <img src="Images/loader.gif" alt="Loading..." />
+            </div>
+            
+            <div class="error"><p>Invalid City Name</p></div>
+            <div class="loader" style="display: none;">
+                <img src="Images/loader.gif" alt="Loading..." width="50">
+            </div>
+
+           <div class="live-times" style="margin-top: 20px; font-size: 16px;">
+                <div class="india-time" style="margin-bottom: 5px; font-weight: 500;"></div>
+                <div class="city-time" style="font-weight: 500; display: none;"></div> <!-- hidden initially -->
+            </div>
+            
+            <div class="weather">
+                <img src="Images/rain.png" class="weather-icon" alt="Weather Icon">
+                <h1 class="temp">22°c</h1>
+                <h2 class="city">New York</h2>
+                
+                <div class="details">
+                    <div class="col">
+                        <img src="Images/humidity.png" alt="Humidity">
+                        <div>
+                            <p class="humidity">50%</p>
+                            <p>Humidity</p>
+                        </div>
+                    </div>
+                    
+                    <div class="col">
+                        <img src="Images/wind.png" alt="Wind Speed">
+                        <div>
+                            <p class="wind">15 km/h</p>
+                            <p>Wind Speed</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+        const apiKey = "e66ceb7f807b3f7eee301a213d1aa598";
+        const timeApiKey = "NRCSESQ8DPV8";
+        
+        const searchBox = document.querySelector(".search input");
+        const searchBtn = document.querySelector(".search button");
+        const weatherIcon = document.querySelector(".weather-icon");
+        const indiaTimeElement = document.createElement("div");
+        
+        indiaTimeElement.style.fontSize = "18px";
+        indiaTimeElement.style.marginTop = "10px";
+        indiaTimeElement.innerHTML = "Current Time: <span id='india-time'></span>";
+        
+        document.querySelector(".card").insertBefore(indiaTimeElement, document.querySelector(".weather"));
+        
+        const cityTimeElement = document.createElement("div");
+        cityTimeElement.style.fontSize = "18px";
+        cityTimeElement.style.marginTop = "5px";
+        cityTimeElement.innerHTML = "<span id='city-label'>City</span> Time: <span id='city-time'></span>";
+        document.querySelector(".weather").appendChild(cityTimeElement);
+        
+        document.querySelector(".live-times").appendChild(cityTimeElement);
+        
+        function updateIndiaTime() {
+            const now = new Date();
+            const indiaTime = now.toLocaleTimeString("en-IN", {
+                timeZone: "Asia/Kolkata",
+                hour12: true
+            });
+            document.getElementById("india-time").innerText = indiaTime;
+        }
+        
+        setInterval(updateIndiaTime, 1000);
+        updateIndiaTime(); // run once at start
+        
+        let cityClockInterval;
+        
+        function startCityClock(initialDate) {
+            if (cityClockInterval) clearInterval(cityClockInterval);
+            let cityTime = new Date(initialDate);
+            cityClockInterval = setInterval(() => {
+                cityTime.setSeconds(cityTime.getSeconds() + 1);
+                const formatted = cityTime.toLocaleTimeString("en-US", {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+                document.getElementById("city-time").innerText = formatted;
+            }, 1000);
+        }
+        
+        async function checkWeather(city) {
+            const loading = document.querySelector(".loading");
+            const weather = document.querySelector(".weather");
+            const error = document.querySelector(".error");
+            loading.style.display = "block";
+            weather.style.display = "none";
+            error.style.display = "none";
+            
+            try {
+                const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+                const weatherRes = await fetch(weatherUrl);
+                
+                if (!weatherRes.ok) throw new Error("City not found");
+                const weatherData = await weatherRes.json();
+                
+                document.querySelector(".city").innerText = weatherData.name;
+                document.getElementById("city-label").innerText = weatherData.name; // 👈 Add this
+
+                const cityTimeDiv = document.querySelector(".city-time");
+                cityTimeDiv.style.display = "block";
+                //cityTimeDiv.innerHTML = `📍 ${weatherData.name} Time: <span id="city-time"></span>`;
+
+
+                document.querySelector(".temp").innerText = Math.round(weatherData.main.temp) + "°c";
+                document.querySelector(".humidity").innerText = weatherData.main.humidity + "%";
+                document.querySelector(".wind").innerText = weatherData.wind.speed + " km/h";
+                
+                const condition = weatherData.weather[0].main;
+                if (condition === "Clouds") weatherIcon.src = "Images/clouds.png";
+                else if (condition === "Clear") weatherIcon.src = "Images/clear.png";
+                else if (condition === "Rain") weatherIcon.src = "Images/rain.png";
+                else if (condition === "Drizzle") weatherIcon.src = "Images/drizzle.png";
+                else if (condition === "Mist") weatherIcon.src = "Images/mist.png";
+                
+                const card = document.querySelector(".card");
+                switch (condition) {
+                    case "Clear":
+                        card.style.background = "linear-gradient(135deg, #f6d365, #fda085)";
+                        break;
+                        case "Rain":
+                        case "Drizzle":
+                            card.style.background = "linear-gradient(135deg, #4e54c8, #8f94fb)";
+                            break;
+                            case "Clouds":
+                                card.style.background = "linear-gradient(135deg, #bdc3c7, #2c3e50)";
+                                break;
+                                case "Mist":
+                                    card.style.background = "linear-gradient(135deg, #3a6073, #16222a)";
+                                    break;
+                                    default:
+                                        card.style.background = "linear-gradient(135deg, #00feba, #5b548a)";
+                }
+                // Get timezone using lat/lon
+                const { lat, lon } = weatherData.coord;
+                const timeZoneRes = await fetch(
+                    `https://api.timezonedb.com/v2.1/get-time-zone?key=${timeApiKey}&format=json&by=position&lat=${lat}&lng=${lon}`
+                );
+                const timeZoneData = await timeZoneRes.json();
+                if (timeZoneData.status !== "OK") throw new Error("Timezone error");
+                const localTime = new Date(timeZoneData.formatted);
+                startCityClock(localTime);
+
+                weather.style.display = "block";
+                loading.style.display = "none";
+                error.style.display = "none";
+            } catch (err) {
+                console.log("Error:", err.message);
+                error.style.display = "block";
+                weather.style.display = "none";
+                loading.style.display = "none";
+            }
+        }
+        searchBtn.addEventListener("click", () => {
+            const city = searchBox.value.trim();
+            if (city) checkWeather(city);
+        });
+
+        searchBox.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                const city = searchBox.value.trim();
+                if (city) checkWeather(city);
+            }
+        });
+        </script>
+    </body>
+</html>
